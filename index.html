@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yohandry Rifas - Control Total con Medios de Pago</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --primary-light: #e0e7ff;
+            --bg-site: #f8fafc;        
+            --card-bg: #ffffff;        
+            --inner-card: #f1f5f9;     
+            --text-main: #0f172a;      
+            --text-muted: #475569;     
+            
+            /* Colores */
+            --color-disponible: #dcfce7; /* Verde */
+            --border-disponible: #22c55e;
+            --text-disponible: #14532d;
+            
+            --color-reservado: #fef08a;  /* Amarillo */
+            --border-reservado: #eab308;
+            --text-reservado: #713f12;
+            
+            --color-vendido: #fee2e2;    /* Rojo */
+            --border-vendido: #ef4444;
+            --text-vendido: #991b1b;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-site);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1650px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 35px;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .header-section {
+            text-align: center;
+            border-bottom: 2px solid var(--inner-card);
+            padding-bottom: 25px;
+            margin-bottom: 30px;
+        }
+        .editable-title {
+            font-size: 34px;
+            font-weight: 800;
+            color: var(--primary);
+            border: 2px dashed #cbd5e1;
+            padding: 6px 12px;
+            display: inline-block;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .editable-title:hover { background: var(--primary-light); }
+        
+        .editable-date, .editable-price {
+            font-size: 15px;
+            color: var(--text-main);
+            font-weight: 600;
+            margin: 8px 10px 0 10px;
+            padding: 6px 16px;
+            display: inline-block;
+            border-radius: 20px;
+            background: var(--inner-card);
+            border: 1px dashed #cbd5e1;
+            cursor: pointer;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 35px;
+        }
+        @media(max-width: 768px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        
+        .stat-card {
+            background: var(--bg-site);
+            padding: 18px;
+            text-align: center;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+        }
+        .stat-card h3 { margin: 0; font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+        .stat-card p { margin: 10px 0 0 0; font-size: 24px; font-weight: 800; }
+        
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1.3fr 0.7fr;
+            gap: 35px;
+        }
+        @media(max-width: 1250px) { .main-layout { grid-template-columns: 1fr; } }
+        
+        .matrix-container {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+        }
+        .matrix {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 6px;
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        @media(max-width: 640px) { .matrix { grid-template-columns: repeat(5, 1fr); } }
+        
+        .square {
+            min-height: 55px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            padding: 4px;
+            box-sizing: border-box;
+        }
+        .square.disponible { background: var(--color-disponible); border: 1px solid var(--border-disponible); color: var(--text-disponible); }
+        .square.reservado { background: var(--color-reservado); border: 1px solid var(--border-reservado); color: var(--text-reservado); }
+        .square.pagado { background: var(--color-vendido); border: 1px solid var(--border-vendido); color: var(--text-vendido); }
+        .square:hover { transform: scale(1.1); z-index: 2; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .square.selected-active { border: 3px solid var(--primary) !important; }
+        .square .num-val { font-weight: 800; font-size: 14px; }
+        .square .client-name { font-size: 9px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
+
+        .form-container { background: var(--card-bg); padding: 25px; border-radius: 16px; border: 1px solid #e2e8f0; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; color: var(--text-muted); }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        
+        .btn-submit { background: var(--primary); color: white; border: none; padding: 12px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; font-size: 15px; margin-top: 10px; }
+        .btn-submit:hover { background: var(--primary-dark); }
+        
+        .table-container { grid-column: span 2; background: var(--card-bg); padding: 25px; border-radius: 16px; border: 1px solid #e2e8f0; margin-top: 10px; overflow-x: auto; }
+        
+        .db-header-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .db-title { font-size: 18px; font-weight: 700; margin-right: auto; color: var(--text-main); }
+        .select-filter { padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 600; font-size: 13px; background: #fff; cursor: pointer; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1050px; }
+        th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: center; }
+        th { background: var(--inner-card); color: var(--text-muted); }
+        .badge { padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 11px; }
+        .badge.reservado { background: var(--color-reservado); color: var(--text-reservado); }
+        .badge.pagado { background: var(--color-vendido); color: var(--text-vendido); }
+        
+        .action-btn { border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; }
+        .btn-edit { background: #eff6ff; color: #1e4ed8; border: 1px solid #bfdbfe; }
+        .btn-del { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+        .btn-reset { background: #ef4444; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; float: right; }
+        .btn-export { background: #0284c7; color: white; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+        .btn-export:hover { background: #0369a1; }
+        .tr-total { background: var(--inner-card); font-weight: bold; font-size: 15px; }
+        
+        .ticket-box { font-family: 'Courier New', Courier, monospace; text-align: left; background: #fff; padding: 15px; border: 1px dashed #000; color: #000; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-section">
+        <button class="btn-reset" onclick="resetSystem()">Reiniciar Rifa</button>
+        <div class="editable-title" id="mainTitle" onclick="editHeaderField('title')">CARGANDO...</div>
+        <div>
+            <div class="editable-date" id="sorteoDate" onclick="editHeaderField('date')">Fecha: Cargando...</div>
+            <div class="editable-price" id="ticketPrice" onclick="editHeaderField('price')">Precio: 5</div>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><h3>Total Números</h3><p>1,000</p></div>
+        <div class="stat-card"><h3>Disponibles</h3><p id="statDisp" style="color: var(--border-disponible);">1000</p></div>
+        <div class="stat-card"><h3>Total Ya Cobrado</h3><p id="statRecaudado" style="color: green;">$ 0.00</p></div>
+        <div class="stat-card"><h3>Total Por Cobrar (Saldos)</h3><p id="statPorCobrar" style="color: red;">$ 0.00</p></div>
+    </div>
+
+    <div class="main-layout">
+        <div class="matrix-container">
+            <div class="matrix" id="numberMatrix"></div>
+        </div>
+
+        <div>
+            <div class="form-container">
+                <div class="editable-price" style="width:100%; text-align:center; box-sizing:border-box; font-size:16px;" id="formActionTitle">Selecciona números</div>
+                <form id="rifaForm" onsubmit="saveClient(event)" style="margin-top: 15px;">
+                    <div class="form-group">
+                        <label>Números Seleccionados</label>
+                        <input type="text" id="formNumText" readonly style="background:var(--inner-card); font-weight:bold; color:var(--primary)">
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre del Cliente</label>
+                        <input type="text" id="formName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono</label>
+                        <input type="text" id="formPhone">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Total de la Compra ($)</label>
+                        <input type="number" id="formTotalCompra" readonly style="background:var(--inner-card); font-weight:bold;">
+                    </div>
+                    <div class="form-group">
+                        <label style="color: var(--primary); font-weight:bold;">Monto que Abona Hoy ($)</label>
+                        <input type="number" id="formMontoAbono" step="0.01" required oninput="calcularSaldoForm()" placeholder="Ej: 5.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Saldo Pendiente ($)</label>
+                        <input type="number" id="formSaldoPendiente" readonly style="background:#fef2f2; color:#991b1b; font-weight:bold;">
+                    </div>
+                    <div class="form-group">
+                        <label>Medio de Pago</label>
+                        <input type="text" id="formMetodo" placeholder="Efectivo, Transferencia...">
+                    </div>
+                    <button type="submit" class="btn-submit">Guardar Abono / Venta</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="db-header-controls">
+                <div class="db-title">Base de Datos General</div>
+                
+                <input type="text" id="searchTable" style="width: 150px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px;" oninput="renderTable()" placeholder="🔍 Buscar...">
+                
+                <select id="filterEstadoTable" class="select-filter" onchange="renderTable()">
+                    <option value="Todos">📊 Todos</option>
+                    <option value="Reservado">🟡 Reservados</option>
+                    <option value="Pagado">🔴 Pagados</option>
+                </select>
+
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    <input type="date" id="filterDateTable" style="padding: 7px; border: 1px solid #cbd5e1; border-radius: 8px; font-size:13px; font-weight:600;" onchange="renderTable()">
+                    <button onclick="clearDateFilter()" style="padding: 8px; background:#e2e8f0; border:none; border-radius:8px; cursor:pointer; font-size:11px; font-weight:bold;">❌</button>
+                </div>
+
+                <button class="btn-export" onclick="exportDatabaseToCSV()">💾 Exportar Base Datos</button>
+            </div>
+            <table id="mainDbTable">
+                <thead>
+                    <tr>
+                        <th>Fecha Reg.</th><th>Números</th><th>Estado</th><th>Cliente</th><th>Teléfono</th><th>Total Compra</th><th>Abonado</th><th>Saldo Pendiente</th><th>Medio Pago</th><th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="clientTableBody"></tbody>
+                <tfoot>
+                    <tr class="tr-total">
+                        <td colspan="5" style="text-align: right;">Suma Filtrada:</td>
+                        <td id="tdTotalCompraFiltrado">$ 0.00</td>
+                        <td id="tdTotalAbonadoFiltrado" style="color: green;">$ 0.00</td>
+                        <td id="tdTotalSaldoFiltrado" style="color: red;">$ 0.00</td>
+                        <td></td><td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==========================================================
+    // ⚠️ RECUERDA CAMBIAR ESTO POR LA URL DE TU REALTIME DATABASE
+    // ==========================================================
+    const FIREBASE_DB_URL = "https://rifas-yohandry-sistema-default-rtdb.firebaseio.com"; 
+
+    let rifaData = {};
+    let config = { title: "RIFA EN LINEA", date: "15 de Julio", price: "5" };
+    let selectedNumbers = [];
+
+    async function fetchFromFirebase() {
+        if(FIREBASE_DB_URL.includes("TU_URL")) return;
+        try {
+            const resData = await fetch(`${FIREBASE_DB_URL}/rifaData.json`);
+            rifaData = await resData.json() || {};
+            const resConfig = await fetch(`${FIREBASE_DB_URL}/config.json`);
+            const configData = await resConfig.json();
+            if(configData) { config = configData; updateHeaderDOM(); }
+            renderMatrix();
+            renderTable();
+        } catch (e) { console.error(e); }
+    }
+
+    async function saveToFirebase() {
+        if(FIREBASE_DB_URL.includes("TU_URL")) return;
+        await fetch(`${FIREBASE_DB_URL}/rifaData.json`, { method: 'PUT', body: JSON.stringify(rifaData) });
+    }
+
+    async function saveConfigToFirebase() {
+        if(FIREBASE_DB_URL.includes("TU_URL")) return;
+        await fetch(`${FIREBASE_DB_URL}/config.json`, { method: 'PUT', body: JSON.stringify(config) });
+        updateHeaderDOM();
+    }
+
+    function updateHeaderDOM() {
+        document.getElementById('mainTitle').innerText = config.title;
+        document.getElementById('sorteoDate').innerText = `Fecha: ${config.date}`;
+        document.getElementById('ticketPrice').innerText = `Precio por Número: $${config.price}`;
+    }
+
+    async function editHeaderField(field) {
+        const { value: text } = await Swal.fire({
+            title: 'Editar campo',
+            input: 'text',
+            inputValue: config[field],
+            showCancelButton: true
+        });
+        if (text) { config[field] = text; await saveConfigToFirebase(); }
+    }
+
+    setInterval(fetchFromFirebase, 4000);
+
+    function renderMatrix() {
+        const matrix = document.getElementById('numberMatrix');
+        if(!matrix) return; matrix.innerHTML = '';
+        
+        for(let i = 1; i <= 1000; i++) {
+            const square = document.createElement('div');
+            let estadoClass = 'disponible';
+            let label = 'Libre';
+            
+            if (rifaData[i]) {
+                estadoClass = rifaData[i].estado === 'Pagado' ? 'pagado' : 'reservado';
+                label = rifaData[i].name;
+            }
+            
+            square.className = `square ${estadoClass}`;
+            if(selectedNumbers.includes(i)) square.classList.add('selected-active');
+            square.innerHTML = `<div class="num-val">${String(i).padStart(3, '0')}</div><div class="client-name">${label}</div>`;
+            square.onclick = () => toggleNumberSelection(i);
+            matrix.appendChild(square);
+        }
+        calculateTotals();
+    }
+
+    function toggleNumberSelection(num) {
+        const idx = selectedNumbers.indexOf(num);
+        if (idx > -1) selectedNumbers.splice(idx, 1);
+        else {
+            if(rifaData[num] && selectedNumbers.length > 0) return;
+            selectedNumbers.push(num);
+        }
+        document.querySelectorAll('.matrix .square').forEach((sq, i) => {
+            if(selectedNumbers.includes(i + 1)) sq.classList.add('selected-active');
+            else sq.classList.remove('selected-active');
+        });
+        updateAutomaticFields();
+    }
+
+    function updateAutomaticFields() {
+        if(selectedNumbers.length === 0) {
+            document.getElementById('rifaForm').reset();
+            document.getElementById('formActionTitle').innerText = "Selecciona números";
+            return;
+        }
+        document.getElementById('formNumText').value = selectedNumbers.join(', ');
+        const first = selectedNumbers[0];
+        
+        if(rifaData[first]) {
+            let datos = rifaData[first];
+            document.getElementById('formName').value = datos.name;
+            document.getElementById('formPhone').value = datos.phone || '';
+            document.getElementById('formTotalCompra').value = datos.totalCompra;
+            document.getElementById('formMontoAbono').value = '';
+            document.getElementById('formSaldoPendiente').value = datos.saldo;
+            document.getElementById('formMetodo').value = datos.metodo || '';
+            document.getElementById('formActionTitle').innerText = "Registrar nuevo abono";
+        } else {
+            let total = selectedNumbers.length * parseFloat(config.price);
+            document.getElementById('formTotalCompra').value = total.toFixed(2);
+            document.getElementById('formMontoAbono').value = total.toFixed(2);
+            document.getElementById('formSaldoPendiente').value = "0.00";
+            document.getElementById('formActionTitle').innerText = "Nueva venta";
+        }
+    }
+
+    function calcularSaldoForm() {
+        let total = parseFloat(document.getElementById('formTotalCompra').value) || 0;
+        let abonoIntento = parseFloat(document.getElementById('formMontoAbono').value) || 0;
+        const first = selectedNumbers[0];
+        
+        if(rifaData[first]) {
+            let saldoHistoricoAnterior = parseFloat(rifaData[first].saldo) || 0;
+            let nuevoSaldo = saldoHistoricoAnterior - abonoIntento;
+            document.getElementById('formSaldoPendiente').value = Math.max(0, nuevoSaldo).toFixed(2);
+        } else {
+            let nuevoSaldo = total - abonoIntento;
+            document.getElementById('formSaldoPendiente').value = Math.max(0, nuevoSaldo).toFixed(2);
+        }
+    }
+
+    async function saveClient(e) {
+        e.preventDefault();
+        if(selectedNumbers.length === 0) return;
+
+        const name = document.getElementById('formName').value.trim();
+        const phone = document.getElementById('formPhone').value || '-';
+        const totalCompra = parseFloat(document.getElementById('formTotalCompra').value);
+        const nuevoAbono = parseFloat(document.getElementById('formMontoAbono').value) || 0;
+        const metodo = document.getElementById('formMetodo').value.trim() || 'Efectivo';
+        
+        const first = selectedNumbers[0];
+        let acumuladoAbonadoAnterior = rifaData[first] ? parseFloat(rifaData[first].abonado) : 0;
+        
+        let totalAbonadoFinal = acumuladoAbonadoAnterior + nuevoAbono;
+        let saldoFinal = totalCompra - totalAbonadoFinal;
+        if(saldoFinal < 0) saldoFinal = 0;
+
+        let estadoFinal = saldoFinal === 0 ? "Pagado" : "Reservado";
+
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const fechaFiltroISO = `${yyyy}-${mm}-${dd}`;
+
+        const timestampVisual = `${dd}/${mm} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const listadoNumeros = selectedNumbers.join(', ');
+
+        selectedNumbers.forEach(num => {
+            rifaData[num] = {
+                estado: estadoFinal, name: name, phone: phone,
+                totalCompra: totalCompra, abonado: totalAbonadoFinal,
+                saldo: saldoFinal, metodo: metodo, timestamp: timestampVisual,
+                fechaISO: fechaFiltroISO, numerosAgrupados: listadoNumeros
+            };
+        });
+
+        await saveToFirebase();
+        
+        const ticketTexto = 
+`--------------------------------
+     COMPROBANTE DE PAGO
+     ${config.title.toUpperCase()}
+--------------------------------
+Fecha: ${timestampVisual}
+Cliente: ${name}
+Teléfono: ${phone}
+Nº Comprados: [ ${listadoNumeros} ]
+Estado: ${estadoFinal.toUpperCase()}
+--------------------------------
+Total Operación:  $${totalCompra.toFixed(2)}
+Abono Recibido:   $${nuevoAbono.toFixed(2)}
+Abono Acumulado:  $${totalAbonadoFinal.toFixed(2)}
+Saldo Pendiente:  $${saldoFinal.toFixed(2)}
+Medio de Pago:    ${metodo}
+--------------------------------
+¡Muchas gracias por apoyar!
+Sorteo: ${config.date}
+--------------------------------`;
+
+        await Swal.fire({
+            title: '<strong>¡Registro Exitoso!</strong>',
+            icon: 'success',
+            html: `
+                <p style="font-size:14px; color:var(--text-muted);">Comprobante oficial generado listo para enviar:</p>
+                <div class="ticket-box" id="ticketContent">${ticketTexto.replace(/\n/g, '<br>').replace(/ /g, '&nbsp;')}</div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '📋 Copiar Ticket',
+            cancelButtonText: 'Cerrar',
+            confirmButtonColor: '#4f46e5',
+            preConfirm: () => {
+                navigator.clipboard.writeText(ticketTexto);
+                Swal.showValidationMessage('¡Copiado al portapapeles!');
+                return false;
+            }
+        });
+
+        selectedNumbers = [];
+        document.getElementById('rifaForm').reset();
+        document.getElementById('formActionTitle').innerText = "Selecciona números";
+        
+        renderMatrix();
+        renderTable();
+    }
+
+    function calculateTotals() {
+        let cobrado = 0, porCobrar = 0, ocupados = 0;
+        Object.keys(rifaData).forEach(n => {
+            if(!rifaData[n]) return;
+            ocupados++;
+            let cantNumerosGrupo = rifaData[n].numerosAgrupados ? rifaData[n].numerosAgrupados.split(',').length : 1;
+            cobrado += (parseFloat(rifaData[n].abonado) || 0) / cantNumerosGrupo;
+            porCobrar += (parseFloat(rifaData[n].saldo) || 0) / cantNumerosGrupo;
+        });
+        document.getElementById('statDisp').innerText = 1000 - ocupados;
+        document.getElementById('statRecaudado').innerText = `$ ${cobrado.toFixed(2)}`;
+        document.getElementById('statPorCobrar').innerText = `$ ${porCobrar.toFixed(2)}`;
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('clientTableBody'); if(!tbody) return; tbody.innerHTML = '';
+        let listados = {};
+        
+        const q = document.getElementById('searchTable')?.value.toLowerCase() || '';
+        const filterEstado = document.getElementById('filterEstadoTable')?.value || 'Todos';
+        const filterDate = document.getElementById('filterDateTable')?.value || ''; 
+
+        Object.keys(rifaData).forEach(n => {
+            const data = rifaData[n]; if(!data) return;
+            if(q && !data.name.toLowerCase().includes(q)) return;
+            if(filterEstado !== 'Todos' && data.estado !== filterEstado) return;
+            if(filterDate && data.fechaISO !== filterDate) return;
+            
+            let claveGrupo = data.numerosAgrupados || n;
+            if(!listados[claveGrupo]) listados[claveGrupo] = data;
+        });
+
+        let sumFilCompra = 0, sumFilAbono = 0, sumFilSaldo = 0;
+
+        Object.keys(listados).forEach(k => {
+            const d = listados[k];
+            sumFilCompra += parseFloat(d.totalCompra) || 0;
+            sumFilAbono += parseFloat(d.abonado) || 0;
+            sumFilSaldo += parseFloat(d.saldo) || 0;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><small>${d.timestamp}</small></td><td><b>${d.numerosAgrupados || k}</b></td>
+                <td><span class="badge ${d.estado==='Pagado'?'pagado':'reservado'}">${d.estado}</span></td>
+                <td>${d.name}</td><td>${d.phone||'-'}</td>
+                <td><b>$ ${parseFloat(d.totalCompra).toFixed(2)}</b></td>
+                <td style="color:green;"><b>$ ${parseFloat(d.abonado).toFixed(2)}</b></td>
+                <td style="color:red;"><b>$ ${parseFloat(d.saldo).toFixed(2)}</b></td>
+                <td><small>${d.metodo || 'Efectivo'}</small></td>
+                <td>
+                    <button class="action-btn btn-edit" onclick="editGroup('${d.numerosAgrupados}')">Abonar</button>
+                    <button class="action-btn btn-del" onclick="deleteGroup('${d.numerosAgrupados}')">Liberar</button>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('tdTotalCompraFiltrado').innerText = `$ ${sumFilCompra.toFixed(2)}`;
+        document.getElementById('tdTotalAbonadoFiltrado').innerText = `$ ${sumFilAbono.toFixed(2)}`;
+        document.getElementById('tdTotalSaldoFiltrado').innerText = `$ ${sumFilSaldo.toFixed(2)}`;
+    }
+
+    function exportDatabaseToCSV() {
+        let csv = [];
+        csv.push(["Fecha Registro", "Numeros", "Estado", "Cliente", "Telefono", "Total Compra ($)", "Total Abonado ($)", "Saldo Pendiente ($)", "Medio de Pago"].join(","));
+        
+        let listados = {};
+        const q = document.getElementById('searchTable')?.value.toLowerCase() || '';
+        const filterEstado = document.getElementById('filterEstadoTable')?.value || 'Todos';
+        const filterDate = document.getElementById('filterDateTable')?.value || '';
+
+        Object.keys(rifaData).forEach(n => {
+            const data = rifaData[n]; if(!data) return;
+            if(q && !data.name.toLowerCase().includes(q)) return;
+            if(filterEstado !== 'Todos' && data.estado !== filterEstado) return;
+            if(filterDate && data.fechaISO !== filterDate) return;
+            let claveGrupo = data.numerosAgrupados || n;
+            if(!listados[claveGrupo]) listados[claveGrupo] = data;
+        });
+
+        Object.keys(listados).forEach(k => {
+            const d = listados[k];
+            let fila = [
+                `"${d.timestamp}"`,
+                `"${d.numerosAgrupados || k}"`,
+                `"${d.estado}"`,
+                `"${d.name}"`,
+                `"${d.phone || '-'}"`,
+                `"${parseFloat(d.totalCompra).toFixed(2)}"`,
+                `"${parseFloat(d.abonado).toFixed(2)}"`,
+                `"${parseFloat(d.saldo).toFixed(2)}"`,
+                `"${d.metodo || 'Efectivo'}"`
+            ];
+            csv.push(fila.join(","));
+        });
+
+        if(csv.length <= 1) {
+            Swal.fire('Atención', 'No hay datos en la tabla para exportar con los filtros seleccionados.', 'warning');
+            return;
+        }
+
+        let csv_string = csv.join('\n');
+        let filename = 'Base_Datos_Rifa_' + new Date().toISOString().split('T')[0] + '.csv';
+        let link = document.createElement('a');
+        link.style.display = 'none';
+        link.setAttribute('href', 'data:text/csv;charset=utf-8,%EF%BB%BF' + encodeURIComponent(csv_string));
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function clearDateFilter() {
+        document.getElementById('filterDateTable').value = '';
+        renderTable();
+    }
+
+    function editGroup(nums) {
+        selectedNumbers = nums.split(',').map(n => parseInt(n));
+        updateAutomaticFields();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function deleteGroup(nums) {
+        if(!(await Swal.fire({title:'¿Liberar números?', text:'Se eliminará el registro.', icon:'warning', showCancelButton:true})).isConfirmed) return;
+        nums.split(',').forEach(n => delete rifaData[n]);
+        await saveToFirebase(); fetchFromFirebase();
+    }
+
+    async function resetSystem() {
+        if((await Swal.fire({ title: '¿Borrar todo?', text: "Se limpiará la rifa entera.", icon: 'warning', showCancelButton: true })).isConfirmed) {
+            rifaData = {}; await saveToFirebase(); fetchFromFirebase();
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', fetchFromFirebase);
+</script>
+</body>
+</html>
